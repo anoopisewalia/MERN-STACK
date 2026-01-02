@@ -1,134 +1,84 @@
-import React, { useContext, useState, useEffect } from "react";
-import { ShopContext } from "../context/ShopContext";
+import React, { useState } from "react";
 import axios from "axios";
+import { backendUrl } from "../App";
 import { toast } from "react-toastify";
 
-const Login = () => {
-  const [currentState, setCurrentState] = useState("Login"); // "Login" or "Sign Up"
-  const { token, setToken, navigate, backendUrl } = useContext(ShopContext);
-
-  const [name, setName] = useState("");
+const Login = ({ setToken }) => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
 
-  // Redirect to home if already logged in
-  useEffect(() => {
-    if (token) {
-      navigate("/");
-    }
-  }, [token, navigate]);
-
-  const submitHandler = async (event) => {
-    event.preventDefault();
-
+  const onSubmitHandler = async (e) => {
     try {
-      if (currentState === "Sign Up") {
-        // Register new user
-        const response = await axios.post(backendUrl + "/api/user/register", {
-          name,
-          email,
-          password,
-        });
+      e.preventDefault();
+      const response = await axios.post(backendUrl + "/api/user/admin", {
+        email,
+        password,
+      });
 
-        if (response.data.success) {
-          setToken(response.data.token);
-          localStorage.setItem("token", response.data.token);
-          toast.success("Account created successfully!");
-        } else {
-          toast.error(response.data.message || "Registration failed");
-        }
+      if (response.data.success) {
+        setToken(response.data.token);
+        toast.success("Login Successfully!");
+
+        //Store token in localStorage for persistence
+        localStorage.setItem("token", token);
+
+        // set token globally for all future axios requests
+        axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
       } else {
-        // Login existing user
-        const response = await axios.post(backendUrl + "/api/user/login", {
-          email,
-          password,
-        });
-
-        if (response.data.success) {
-          setToken(response.data.token);
-          localStorage.setItem("token", response.data.token);
-          toast.success("Welcome back!");
-        } else {
-          toast.error(response.data.message || "Login failed");
-        }
+        toast.error(response.data.message);
       }
+
+      console.log(response);
     } catch (error) {
-      console.log(error); // Fixed typo: was "error.messgae"
-      const errorMsg = error.response?.data?.message || error.message || "Something went wrong";
-      toast.error(errorMsg);
+      console.log("Inside of catch blog showing the supporting error.");
+      console.log(error);
+      toast.error(error.message);
     }
   };
 
   return (
-    <form
-      onSubmit={submitHandler}
-      className="flex flex-col items-center w-[90%] sm:max-w-96 m-auto mt-14 gap-4 text-gray-800"
-    >
-      <div className="inline-flex items-center gap-2 mb-2 mt-10">
-        <p className="prata-regular text-3xl">{currentState}</p>
-        <hr className="border-none h-[1.5px] w-8 bg-gray-800" />
-      </div>
+    <div className="min-h-screen flex items-center justify-center w-full ">
+      <div className="bg-white shadow-md rounded-lg px-8 py-6 max-w-md">
+        <h1 className="text-2xl font-bold mb-4">Admin Panel</h1>
+        <form onSubmit={onSubmitHandler}>
+          <div className="mb-3 min-w-72">
+            <p className="text-sm font-medium text-gray-700 mb-2">
+              Email Address :{" "}
+            </p>
+            <input
+              type="email"
+              className="rounded-full w-full px-3 py-2 border border-gray-300 outline-none"
+              placeholder="your@email.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+            />
+          </div>
 
-      {/* Name field - only show on Sign Up */}
-      {currentState === "Sign Up" && (
-        <input
-          type="text"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-          className="w-full px-3 py-2 border border-gray-800 rounded"
-          placeholder="Name"
-          required={currentState === "Sign Up"}
-        />
-      )}
+          <div className="mb-3 min-w-72">
+            <p className="text-sm font-medium text-gray-700 mb-2">
+              Password :{" "}
+            </p>
+            <input
+              value={password}
+              type="password"
+              className="rounded-full w-full px-3 py-2 border border-gray-300 outline-none"
+              placeholder="Enter your Password"
+              onChange={(e) => setPassword(e.target.value)}
+              required
+            />
+          </div>
 
-      {/* Email field */}
-      <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="w-full px-3 py-2 border border-gray-800 rounded"
-        placeholder="Email"
-        required
-      />
-
-      {/* Password field */}
-      <input
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="w-full px-3 py-2 border border-gray-800 rounded"
-        placeholder="Password"
-        required
-      />
-
-      {/* Links: Forgot Password & Toggle Login/Sign Up */}
-      <div className="w-full flex justify-between text-sm mt-[-8px]">
-        <p className="cursor-pointer hover:text-gray-600"></p>
-        {currentState === "Login" ? (
-          <p
-            onClick={() => setCurrentState("Sign Up")}
-            className="cursor-pointer hover:text-gray-600"
+          <button
+            type="submit"
+            className="mt-2 w-full py-2 px-4 rounded-md text-white bg-black"
           >
-            Create account
-          </p>
-        ) : (
-          <p
-            onClick={() => setCurrentState("Login")}
-            className="cursor-pointer hover:text-gray-600"
-          >
-            Login here
-          </p>
-        )}
+            {" "}
+            Login
+          </button>
+        </form>
       </div>
-
-      {/* Submit Button */}
-      <button
-        type="submit"
-        className="bg-black text-white w-full py-3 cursor-pointer font-light mt-4 hover:bg-gray-900 transition rounded"
-      >
-        {currentState === "Sign Up" ? "Sign Up" : "Sign In"}
-      </button>
-    </form>
+    </div>
   );
 };
 

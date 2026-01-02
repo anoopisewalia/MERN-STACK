@@ -1,110 +1,126 @@
-import React, { useContext, useState, useEffect } from "react";
-import Title from "../components/Title";
-import { ShopContext } from "../context/ShopContext";
+import React, { useContext } from "react";
+import { useEffect, useState } from "react";
 import axios from "axios";
+import { backendUrl } from "../App";
+import { toast } from "react-toastify";
+import { assets } from "../assets/assets";
 
-const Orders = () => {
-  const { backendUrl, token, currency } = useContext(ShopContext);
+const Orders = ({ token }) => {
+  const [orders, setOrders] = useState([]);
+  const currency = "$";
+  const fetchAllOrders = async () => {
+    if (!token) {
+      return null;
+    }
 
-  const [orderData, setOrderData] = useState([]);
-
-  const loadOrderData = async () => {
     try {
-      console.log("This is the current token: ", token);
-
-      if (!token) {
-        console.log("From the block where no token exist ");
-        return null;
-      }
-
       const response = await axios.post(
-        backendUrl + "/api/order/userorders",
+        backendUrl + "/api/order/list",
         {},
         { headers: { token } }
       );
-      console.log("This is the response : ", response);
-      if (response.data.success && Array.isArray(response.data.orders)) {
-        let allOrdersItem = [];
-        console.log(
-          "I am inside of if statement sizeof reponse.data.orderDATa : ",
-          response.data.orders
-        );
 
-        response.data.orders.map((order) => {
-          console.log("This is the order part : ", order);
-          order?.items?.map((item) => {
-            item["status"] = order.status;
-            item["payment"] = order.payment;
-            item["paymentMethod"] = order.paymentMethod;
-            item["date"] = order.date;
-            console.log("Here we are from item part ", item);
-            allOrdersItem.push(item);
-          });
-        });
-        setOrderData(allOrdersItem.reverse());
-        console.log("All order Items : ", allOrdersItem);
+      if (response.data.success) {
+        setOrders(response.data.orders.reverse());
+      } else {
+        toast.error(response.data.message);
       }
-
-      // console.log(response.data);
+      console.log(response);
     } catch (error) {
-      console.log("There is an error :", error);
-      console.log(error.message);
+      toast.error(error.message);
+    }
+  };
+
+  const statusHandler = async (event, orderId) => {
+    try {
+      const response = await axios.post(backendUrl + "/api/order/status", {
+        orderId,
+        status: event.target.value,
+      },{headers:{token}});
+
+      if (response.data.success) {
+        await fetchAllOrders()
+      }
+    } catch (error) {
+      console.log(error);
+      toast.error(response.data.message);
     }
   };
 
   useEffect(() => {
-    loadOrderData();
+    fetchAllOrders();
   }, [token]);
-
   return (
-    <div className="border-t pt-16">
-      <div className="text-2xl">
-        <Title text1={"My "} text2={"ORDERS"} />
-      </div>
+    <div>
+      <h3>Order Page</h3>
 
       <div>
-        {orderData.map((item, index) => (
+        {orders.map((order, index) => (
           <div
+            className="grid grid-cols-1 sm:grid-cols-[0.5fr_2fr_1fr] lg:grid-cols-[0.5fr_2fr_1fr_1fr_1fr] gap-3 items-start border-2 border-gray-200 p-5 md:p-8 my-3 md:my-4 text-xs sm:text-sm text-gray-700"
             key={index}
-            className="py-4 border-t text-gray-700 flex flex-col md:flex-row md:items-center md:justify-between gap-4 "
           >
-            <div className="flex items-start gap-6 text-sm">
-              <img className="w-16 sm:w-20" src={item.image[0]} alt="" />
+            <img className="w-12" src={assets.parcel_icon} alt="" />
+            <div>
               <div>
-                <p className="text-base font-medium">{item.name}</p>
-                <div className="flex items-center gap-3 mt-1 text-base text-gray-800">
-                  <p>
-                    {currency}
-                    {item.price}
-                  </p>
-                  <p>Quantity: {item.price}</p>
-                  <p>Size : {item.quantity}</p>
-                </div>
-                <p className="mt-1">
-                  Date:{" "}
-                  <span className="text-gray-700">
-                    {new Date(item.date).toDateString()}
-                  </span>
-                </p>
-                <p className="mt-1">
-                  Payment :
-                  <span className="text-gray-700">{item.paymentMethod}</span>
+                {order.items.map((item, index) => {
+                  if (index === order.items.length - 1) {
+                    return (
+                      <p className="py-0.5" key={index}>
+                        {item.name} X {item.quantity}
+                        <span>{item.size}</span>
+                        {index !== order.items.length - 1 && ","}
+                      </p>
+                    );
+                  } else {
+                    <p className="py-0.5" key={index}>
+                      {item.name} x {item.quantity} <span>{item.size}</span>
+                      {index !== order.items.length - 1 && ","}
+                    </p>;
+                  }
+                })}
+              </div>
+
+              <p className="mt-3 mb-2 font-medium">
+                {order.address.firstName + " " + order.address.lastName}
+              </p>
+
+              <div>
+                <p>{order.address.street + ","}</p>
+                <p>
+                  {order.address.city +
+                    "," +
+                    order.address.state +
+                    "," +
+                    order.address.country +
+                    "," +
+                    order.address.zipcode}
                 </p>
               </div>
+
+              <p>{order.address.phone}</p>
             </div>
 
-            <div className="md:w-1/2  flex justify-between">
-              <div className="flex items-center gap-2">
-                <p className="min-w-2 h-2 rounded-full bg-green-500"></p>
-                <p className="text-sm  md:text-base  ">{item.status}</p>
-              </div>
-              <button
-                onClick={loadOrderData}
-                className="border px-4 py-2 text-sm font-medium rounded-sm"
-              >
-                Track Order
-              </button>
+            <div>
+              <p className="text-sm sm:text-[15px]">
+                Items: {order.items.length}
+              </p>
+              <p className="mt-3">Method : {order.paymentMethod}</p>
+              <p>Payment : {order.payment ? "Done" : "Pending"}</p>
+              <p>Date : {new Date(order.date).toLocaleDateString()}</p>
             </div>
+            <p className="text-sm sm:text-[15px]">
+              {currency}
+              {order.amount}
+            </p>
+
+            <select onChange={(event)=>statusHandler(event,order._id)} className="p-2 font-semibold " value={order.status}>
+              <option value="Order Placed">Order Placed</option>
+              <option value="Packing">Packing</option>
+              <option value="Shipped">Shipped</option>
+              <option value="Ship for delivery">Ship for delivery</option>
+              <option value="Delivered">Delivered</option>
+            </select>
           </div>
         ))}
       </div>
